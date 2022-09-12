@@ -1,0 +1,52 @@
+version: '3.9'
+services:
+  # go app
+  app:
+    container_name: go_app
+    environment:
+      - DATABASE_DSN=postgres://postgres:123@postgres/postgres?sslmode=disable
+      - ADDR=:8080
+    tty: true
+    build: .
+    ports:
+      - 8080:8080
+      - 8081:8081
+    restart: on-failure
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+
+  # postgres
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      - POSTGRES_PASSWORD=123
+    ports:
+      - 5432:5432
+    volumes:
+      - ./infra/pg_data:/var/lib/postgresql/data
+      
+  # prometheus
+  prometheus:
+    image: prom/prometheus:v2.9.2
+    ports:
+      - 9090:9090
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  # grafana
+  grafana:
+    image: grafana/grafana:6.1.6
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+
+
+volumes:
+  pg_data:

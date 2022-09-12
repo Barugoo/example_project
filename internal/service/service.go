@@ -26,13 +26,15 @@ func (s *service) checkItemsExist(ctx context.Context, ids []int64) error {
 	wg := &sync.WaitGroup{}
 	errCh := make(chan error)
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	for _, itemID := range ids {
 
 		wg.Add(1)
 		go func(ctx context.Context, itemID int64) {
 			defer func() {
 				wg.Done()
-				time.Sleep(50 * time.Hour) // goroutine leak here
+				// time.Sleep(50 * time.Hour) // goroutine leak here
 			}()
 
 			if _, err := s.items.GetItem(ctx, itemID); err != nil {
@@ -44,17 +46,20 @@ func (s *service) checkItemsExist(ctx context.Context, ids []int64) error {
 		}(ctx, itemID)
 	}
 
+	var err error
 	go func() {
-		wg.Wait()
-		close(errCh)
+		err = <-errCh
+		switch err {
+		case rep.ErrNotFound:
+			err = ErrItemNotFound
+		}
+		cancel()
 	}()
 
-	err := <-errCh
-	switch err {
-	case rep.ErrNotFound:
-		return ErrItemNotFound
-	}
-	return nil
+	wg.Wait()
+	close(errCh)
+
+	return err
 }
 
 func (s *service) ProcessOrder(ctx context.Context, o *models.Order) error {

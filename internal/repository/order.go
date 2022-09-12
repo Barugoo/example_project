@@ -23,17 +23,15 @@ func NewOrderRepository(db *sql.DB) OrderRepository {
 func (r *orderRepository) CreateOrder(ctx context.Context, order *models.Order) (*models.Order, error) {
 	now := time.Now()
 
-	res, err := r.db.ExecContext(ctx, "INSERT INTO orders (email, created_at) VALUES ($1, $2)",
+	var id int64
+	row := r.db.QueryRowContext(ctx, "INSERT INTO orders (email, created_at) VALUES ($1, $2) RETURNING id",
 		order.Email, now)
-	if err != nil {
+	if err := row.Err(); err != nil {
 		return nil, err
 	}
+	row.Scan(&id)
 
-	orderID, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-	order.ID = orderID
+	order.ID = id
 	order.CreatedAt = now
 
 	return order, nil

@@ -73,6 +73,7 @@ func (s *server) processOrder(w http.ResponseWriter, r *http.Request) {
 
 	err := s.service.ProcessOrder(ctx, &order)
 	if err != nil && err != service.ErrItemNotFound {
+		log.Printf("service.ProcessOrder: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
